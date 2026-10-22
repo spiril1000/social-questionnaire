@@ -1,0 +1,16 @@
+# Only requirements.txt, src/ and docker-entrypoint.sh are needed to build the image
+.git
+.github
+.vscode
+.venv
+venv
+.localdata
+.pytest_cache
+**/__pycache__
+tests
+config
+data
+.env
+*.env
+*.md
+docker-compose.yml

@@ -1,0 +1,28 @@
+{% extends "base_swipe.html" %}
+{# Shown after submitting (and in the settings preview). #}
+{% from "_logo.html" import logo %}
+
+{% block title %}Thank you{% endblock %}
+
+{% block content %}
+<div class="hearts" aria-hidden="true">
+  {% for i in range(14) %}
+  <span style="--i:{{ i }}; --size:{{ 14 + (i * 7 % 4) * 6 }}px; --dur:{{ 5 + (i * 3 % 5) }}s">{{ "♥" if i % 2 else "★" }}</span>
+  {% endfor %}
+</div>
+
+<main class="match">
+  {% if rate_limited %}
+  <h1 class="match-title">Easy, tiger.</h1>
+  <p>Our records show you have already submitted a lot of feedback recently. Please allow our team some time to process it.</p>
+  {% else %}
+  <div class="intro-badge pop">{{ logo(settings.logo, "logo-big", "thanks") }}</div>
+  <h1 class="match-title">{{ settings.thanks_title }}</h1>
+  {% if ticket %}
+  <p class="ticket">Ticket <strong>#{{ ticket }}</strong> has been received.</p>
+  {% endif %}
+  <p>{{ settings.thanks_text }}</p>
+  <p class="muted-light">{{ settings.thanks_subtext }}</p>
+  {% endif %}
+</main>
+{% endblock %}

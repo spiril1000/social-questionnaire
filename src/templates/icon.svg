@@ -1,0 +1,18 @@
+{#- The site icon: the selected logo in white on the colour scheme's gradient.
+    app_icon=false: the browser-tab favicon, a rounded square with a big logo.
+    app_icon=true:  the home-screen icon for the installed admin. A full square, because phones
+                    round or mask it themselves, with the logo kept inside the middle 80% ("safe zone"). -#}
+{% from "_logo.html" import logo_paths %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="{{ scheme.c1 }}"/><stop offset="1" stop-color="{{ scheme.c3 }}"/>
+    </linearGradient>
+  </defs>
+  {% if app_icon %}
+  <rect width="64" height="64" fill="url(#bg)"/>
+  <g transform="translate(17 17) scale(1.25)">{{ logo_paths(settings.logo, "#fff") }}</g>
+  {% else %}
+  <rect width="64" height="64" rx="16" fill="url(#bg)"/>
+  <g transform="translate(10 10) scale(1.8333)">{{ logo_paths(settings.logo, "#fff") }}</g>
+  {% endif %}
+</svg>

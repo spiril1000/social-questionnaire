@@ -1,0 +1,19 @@
+# Example: one questionnaire site. Copy .env.example to .env first, then `docker compose up -d`
+# and open http://localhost:8000/?for=Alex (survey) and http://localhost:8000/admin (admin).
+#
+# Several sites? Add more services with their own PRESET, container name, port and volumes
+# (see "Running several sites" in the README).
+services:
+  questionnaire:
+    image: ghcr.io/spiril1000/social-questionnaire:latest
+    container_name: questionnaire
+    restart: unless-stopped
+    environment:
+      - PRESET=hookup          # hookup, ghosted or date: the starting questions, texts and look
+    env_file:
+      - .env                   # ADMIN_USER, ADMIN_PASSWORD, ... (see .env.example)
+    volumes:
+      - ./config:/config       # questions.json, settings.json
+      - ./data:/data           # responses.db
+    ports:
+      - "8000:8000"            # behind a reverse proxy you can drop this and use the proxy's network

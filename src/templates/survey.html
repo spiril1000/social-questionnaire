@@ -1,0 +1,143 @@
+{% extends "base_swipe.html" %}
+{# The survey: an intro card, then one card per question. static/swipe.js turns the cards into a
+   one-question-per-screen flow; without JavaScript they are simply stacked. Field names must match
+   parse_answers() in app.py. #}
+{% from "_logo.html" import logo %}
+
+{% block content %}
+<header class="topbar">
+  <button type="button" class="back js-only" id="back" aria-label="Previous question" hidden>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="segments js-only" aria-hidden="true">
+    {% for q in questions %}<span class="seg"></span>{% endfor %}
+  </div>
+  {{ logo(settings.logo, "logo-top", "top", solid=true) }}
+</header>
+
+{% if preview_json %}
+{# Settings preview: submitting shows the preview thank-you page; nothing is stored #}
+<form method="post" action="{{ url_for('admin_settings_preview') }}" id="survey" class="deck" novalidate>
+  <input type="hidden" name="page" value="thanks">
+  <input type="hidden" name="settings_json" value="{{ preview_json }}">
+{% else %}
+<form method="post" action="{{ url_for('submit') }}" id="survey" class="deck" novalidate>
+{% endif %}
+  <input type="hidden" name="for" value="{{ for_name }}">
+  <div class="hp" aria-hidden="true">
+    <label>Website <input type="text" name="website" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  <section class="slide intro" data-step>
+    <div class="slide-body">
+      <div class="intro-badge">{{ logo(settings.logo, "logo-big", "intro") }}</div>
+      <p class="eyebrow">{{ settings.brand_name }}™</p>
+      <h1>{{ settings.intro_title }}{% if for_name %}<br><span class="grad-text">{{ for_name }}</span>{% endif %},</h1>
+      <p>{{ settings.intro_text }}</p>
+      <p class="muted">{{ questions | length }} quick questions · {{ settings.intro_meta }}</p>
+    </div>
+    <div class="slide-actions js-only">
+      <button type="button" class="btn btn-primary" data-next>{{ settings.start_button }}</button>
+    </div>
+    <p class="fine-print">{{ settings.fine_print }} © 2026 {{ settings.brand_name }}™.</p>
+  </section>
+
+  {% for q in questions %}
+  <section class="slide" data-step data-type="{{ q.type }}"
+           {% if q.required %}data-required{% endif %}
+           {% if q.id in errors %}data-error{% endif %}
+           role="group" aria-labelledby="q-{{ q.id }}">
+    <div class="slide-body">
+      <p class="q-count">Question {{ loop.index }} of {{ questions | length }}</p>
+      <h2 id="q-{{ q.id }}">{{ q.label }}{% if q.required %}<span class="required" title="Required"> *</span>{% endif %}</h2>
+
+      <div class="answers">
+      {% if q.type == "stars" %}
+        <div class="stars">
+          {% for n in range(5, 0, -1) %}
+          <input type="radio" id="{{ q.id }}_{{ n }}" name="{{ q.id }}" value="{{ n }}"
+                 {% if values.get(q.id) == n|string %}checked{% endif %}>
+          <label for="{{ q.id }}_{{ n }}" title="{{ n }} star{{ 's' if n > 1 }}">★</label>
+          {% endfor %}
+        </div>
+
+      {% elif q.type == "nps" %}
+        <div class="nps">
+          {% for n in range(0, 11) %}
+          <input type="radio" id="{{ q.id }}_{{ n }}" name="{{ q.id }}" value="{{ n }}"
+                 {% if values.get(q.id) == n|string %}checked{% endif %}>
+          <label for="{{ q.id }}_{{ n }}">{{ n }}</label>
+          {% endfor %}
+        </div>
+        <div class="nps-legend"><span>Not at all likely</span><span>Extremely likely</span></div>
+
+      {% elif q.type == "choice" %}
+        <div class="choices">
+          {% for opt in q.options %}
+          <label class="choice">
+            <input type="radio" name="{{ q.id }}" value="{{ opt }}"
+                   {% if values.get(q.id) == opt %}checked{% endif %}>
+            <span>{{ opt }}</span>
+          </label>
+          {% endfor %}
+        </div>
+
+      {% elif q.type == "matrix" %}
+        <div class="matrix">
+          {% for row in q.rows %}
+          {% set field = q.id ~ "_" ~ loop.index0 %}
+          <div class="matrix-row">
+            <span class="matrix-label">{{ row }}</span>
+            <div class="stars small">
+              {% for n in range(5, 0, -1) %}
+              <input type="radio" id="{{ field }}_{{ n }}" name="{{ field }}" value="{{ n }}"
+                     {% if values.get(field) == n|string %}checked{% endif %}>
+              <label for="{{ field }}_{{ n }}" title="{{ n }}">★</label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+      {% elif q.type == "text" %}
+        {% if q.multiline %}
+        <textarea name="{{ q.id }}" rows="5" maxlength="2000"
+                  placeholder="All feedback is forwarded to management.">{{ values.get(q.id, '') }}</textarea>
+        {% else %}
+        <input type="text" name="{{ q.id }}" maxlength="100" value="{{ values.get(q.id, '') }}" placeholder="Type here">
+        {% endif %}
+
+      {% elif q.type == "contact" %}
+        <div class="choices contact-methods">
+          {% for key, label, placeholder in contact_methods %}
+          <label class="choice{% if key == 'none' %} wide{% endif %}">
+            <input type="radio" name="{{ q.id }}" value="{{ key }}" data-placeholder="{{ placeholder }}"
+                   {% if values.get(q.id) == key %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <input type="text" class="contact-handle" name="{{ q.id }}_handle" maxlength="200" autocomplete="off"
+               value="{{ values.get(q.id ~ '_handle', '') }}" placeholder="Username, number or link"
+               aria-label="Username, number or link">
+      {% endif %}
+      </div>
+
+      <p class="slide-error" role="alert" {% if q.id not in errors %}hidden{% endif %}>Please answer this one to continue.</p>
+    </div>
+
+    <div class="slide-actions">
+      {% if loop.last %}
+      <button type="submit" class="btn btn-primary">Submit</button>
+      {% else %}
+      <button type="button" class="btn btn-primary js-only" data-next>Next</button>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='swipe.js') }}"></script>
+{% endblock %}

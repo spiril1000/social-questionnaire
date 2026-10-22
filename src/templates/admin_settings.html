@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{# Admin: colour scheme, logo and texts, plus Preview (unsaved) and Reset to a preset. #}
+{% from "_icons.html" import icon %}
+{% from "_logo.html" import logo %}
+
+{% block title %}Settings{% endblock %}
+
+{% macro field(name, label, hint="", area=false) %}
+<label class="field">
+  <span>{{ label }}</span>
+  {% if area %}
+  <textarea name="{{ name }}" rows="3" maxlength="500">{{ settings[name] }}</textarea>
+  {% else %}
+  <input type="text" name="{{ name }}" maxlength="500" value="{{ settings[name] }}">
+  {% endif %}
+  {% if hint %}<small>{{ hint }}</small>{% endif %}
+</label>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Settings</h1>
+</div>
+{% if saved %}<div class="toast" role="status">{{ icon("check") }}Saved. The survey is updated.</div>{% endif %}
+{% if reset_to %}<div class="toast" role="status">{{ icon("check") }}Reset to the {{ reset_to }} preset.</div>{% endif %}
+
+<form method="post" class="stack" id="settings">
+  <fieldset class="card form-card">
+    <legend>Colour scheme</legend>
+    <div class="swatch-grid">
+      {% for key, s in schemes.items() %}
+      <label class="swatch">
+        <input type="radio" name="color_scheme" value="{{ key }}" data-css="{{ scheme_css_for(key) }}"
+               {% if settings.color_scheme == key %}checked{% endif %}>
+        <span class="swatch-chip" style="background: linear-gradient(135deg, {{ s.c1 }}, {{ s.c2 }}, {{ s.c3 }})">
+          {{ icon("check") }}
+        </span>
+        <span class="swatch-name">{{ s.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="card form-card">
+    <legend>Logo</legend>
+    <div class="logo-grid">
+      {% for key, name in logos.items() %}
+      <label class="logo-tile">
+        <input type="radio" name="logo" value="{{ key }}" {% if settings.logo == key %}checked{% endif %}>
+        <span>{{ logo(key, "", "pick-" ~ key) }}<em>{{ name }}</em></span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="card form-card">
+    <legend>Branding</legend>
+    {{ field("brand_name", "Company name", "Shown with ™ on the intro screen and in the browser tab.") }}
+    {{ field("page_title", "Page title", "The browser tab title.") }}
+  </fieldset>
+
+  <fieldset class="card form-card">
+    <legend>Intro screen</legend>
+    {{ field("intro_title", "Greeting", "The person's name from ?for=Name is added after this.") }}
+    {{ field("intro_text", "Text", area=true) }}
+    {{ field("intro_meta", "Small line", "Shown after the number of questions, e.g. \"8 quick questions · …\".") }}
+    {{ field("start_button", "Start button") }}
+  </fieldset>
+
+  <fieldset class="card form-card">
+    <legend>Thank-you screen</legend>
+    {{ field("thanks_title", "Headline") }}
+    {{ field("thanks_text", "Text", area=true) }}
+    {{ field("thanks_subtext", "Small print") }}
+  </fieldset>
+
+  <fieldset class="card form-card">
+    <legend>Fine print</legend>
+    {{ field("fine_print", "Bottom of the intro screen", area=true) }}
+  </fieldset>
+
+  <div class="savebar">
+    {# Save comes first so Enter in a text field saves; CSS shows Preview on the left #}
+    <button class="btn primary">{{ icon("check") }}Save</button>
+    <button class="btn secondary preview" formaction="{{ url_for('admin_settings_preview') }}" formtarget="_blank">
+      {{ icon("eye") }}Preview
+    </button>
+  </div>
+</form>
+
+<div class="reset-form">
+  <button type="button" class="link-btn" id="open-reset">Reset settings to a preset…</button>
+</div>
+
+<dialog class="preset-dialog" id="reset-dialog" aria-labelledby="reset-title">
+  <form method="post" action="{{ url_for('admin_settings_reset') }}">
+    <h2 id="reset-title">Reset to a preset</h2>
+    <p class="hint">Replaces the colours, logo and all texts. Your responses are kept.</p>
+    <div class="preset-list">
+      {% for p in presets %}
+      <label class="preset-tile">
+        <input type="radio" name="preset" value="{{ p.key }}" {% if p.key == preset %}checked{% endif %}>
+        <span>
+          <span class="preset-swatch" style="background: linear-gradient(135deg, {{ p.scheme.c1 }}, {{ p.scheme.c3 }})">
+            {{ logo(p.settings.logo, "", "preset-" ~ p.key, solid=true) }}
+          </span>
+          <span class="preset-info">
+            <strong><span class="preset-name">{{ p.key }}</span>{% if p.key == preset %} <small>(this site's default)</small>{% endif %}</strong>
+            <small>{{ p.settings.brand_name }} · {{ p.settings.page_title }}</small>
+          </span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    <label class="switch">
+      <span>Also replace the questions</span>
+      <input type="checkbox" name="questions" role="switch"><i></i>
+    </label>
+    <div class="dialog-actions">
+      <button type="button" class="btn secondary" data-close>Cancel</button>
+      <button class="btn primary">Reset</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Preview the colour scheme immediately; it's only stored when you press Save
+  document.getElementById("settings").addEventListener("change", function (e) {
+    if (e.target.name === "color_scheme") document.documentElement.setAttribute("style", e.target.dataset.css);
+  });
+
+  // Reset dialog
+  var dialog = document.getElementById("reset-dialog");
+  document.getElementById("open-reset").addEventListener("click", function () { dialog.showModal(); });
+  dialog.querySelector("[data-close]").addEventListener("click", function () { dialog.close(); });
+  dialog.addEventListener("click", function (e) {
+    // A tap on the backdrop targets the dialog itself, but so does one on its padding
+    var r = dialog.getBoundingClientRect();
+    var outside = e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    if (e.target === dialog && outside) dialog.close();
+  });
+</script>
+{% endblock %}

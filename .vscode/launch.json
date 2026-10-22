@@ -1,0 +1,41 @@
+{
+  // F5 runs a site locally: no admin login (PRODUCTION isn't set), data in .localdata/<preset>,
+  // and the terminal prints a link for your phone. Pick the .venv interpreter in VS Code first.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run: hookup (port 8000)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/app.py",
+      "cwd": "${workspaceFolder}/src",
+      "env": { "PRESET": "hookup", "PORT": "8000" },
+      "jinja": true
+    },
+    {
+      "name": "Run: ghosted (port 8001)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/app.py",
+      "cwd": "${workspaceFolder}/src",
+      "env": { "PRESET": "ghosted", "PORT": "8001" },
+      "jinja": true
+    },
+    {
+      "name": "Run: date (port 8002)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/app.py",
+      "cwd": "${workspaceFolder}/src",
+      "env": { "PRESET": "date", "PORT": "8002" },
+      "jinja": true
+    },
+    {
+      "name": "Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local test data (python src/app.py) and the example compose file's volumes
+.localdata/
+config/
+data/
+
+# Secrets
+.env
+*.env
+!.env.example
+
+# Editors and OS (the shared VS Code run configurations are kept)
+.vscode/*
+!.vscode/launch.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

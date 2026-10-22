@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{# Admin: add or edit one question. #}
+{% from "_icons.html" import icon, TYPE_ICONS %}
+
+{% block title %}{{ "Add question" if is_new else "Edit question" }}{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('admin_questions') }}">{{ icon("back") }}Questions</a>
+<div class="page-head">
+  <h1>{{ "Add question" if is_new else "Edit question" }}</h1>
+</div>
+
+{% if errors %}
+<div class="card error-card" role="alert">
+  <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form method="post" class="stack" id="editor">
+  <div class="card form-card">
+    <label class="field">
+      <span>Question</span>
+      <textarea name="label" rows="3" maxlength="300" required
+                placeholder="e.g. How would you rate the conversation?">{{ question.label or '' }}</textarea>
+    </label>
+  </div>
+
+  <fieldset class="card form-card">
+    <legend>Answer type</legend>
+    <div class="type-grid">
+      {% for key, name in types.items() %}
+      <label class="type-tile">
+        <input type="radio" name="type" value="{{ key }}" {% if question.type == key %}checked{% endif %}>
+        <span>{{ icon(TYPE_ICONS.get(key, "text")) }}{{ name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <div class="card form-card" data-for="choice">
+    <label class="field">
+      <span>Options</span>
+      <textarea name="options" rows="6" placeholder="One option per line">{{ (question.options or []) | join("\n") }}</textarea>
+      <small>One option per line, at least two.</small>
+    </label>
+  </div>
+
+  <div class="card form-card" data-for="matrix">
+    <label class="field">
+      <span>Things to rate</span>
+      <textarea name="rows" rows="6" placeholder="One per line">{{ (question.rows or []) | join("\n") }}</textarea>
+      <small>One per line. Each gets its own 1–5 star rating.</small>
+    </label>
+  </div>
+
+  <div class="card form-card hint-card" data-for="contact">
+    People choose Instagram, Snapchat, Facebook, Phone number, Other or "Don't contact me",
+    then type their username or number.
+  </div>
+
+  {% if not is_new %}
+  <p class="hint">Changing the type or options won't change answers that were already submitted.</p>
+  {% endif %}
+
+  <div class="card form-card toggles">
+    <label class="switch" data-for="text">
+      <span>Large text box</span>
+      <input type="checkbox" name="multiline" role="switch" {% if question.multiline %}checked{% endif %}><i></i>
+    </label>
+    <label class="switch">
+      <span>Required</span>
+      <input type="checkbox" name="required" role="switch" {% if question.required %}checked{% endif %}><i></i>
+    </label>
+  </div>
+
+  <div class="savebar">
+    <a class="btn secondary" href="{{ url_for('admin_questions') }}">Cancel</a>
+    <button class="btn primary">{{ icon("check") }}Save</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Only show the fields that matter for the chosen answer type
+  (function () {
+    var form = document.getElementById("editor");
+    function update() {
+      var checked = form.querySelector("input[name=type]:checked");
+      var type = checked ? checked.value : "";
+      form.querySelectorAll("[data-for]").forEach(function (el) {
+        el.hidden = el.getAttribute("data-for") !== type;
+      });
+    }
+    form.addEventListener("change", update);
+    update();
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,4 @@
+# Only used for test settings; the app itself is plain files in src/ (see README).
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

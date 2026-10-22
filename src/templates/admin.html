@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{# Admin: all responses, newest first, each with Edit and Delete. #}
+{% from "_icons.html" import icon %}
+
+{% block title %}Responses{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Responses</h1>
+  <span class="count-pill" data-count>{{ responses | length }}</span>
+</div>
+
+{% for r in responses %}
+{% set overall = r.answers.get("overall") %}
+<details class="card response" id="r-{{ r.id }}" {% if loop.first %}open{% endif %}>
+  <summary>
+    <div class="resp-top">
+      <strong>#{{ r.ticket }}</strong>
+      {% if r.for_name %}<span class="chip chip-accent">for {{ r.for_name }}</span>{% endif %}
+      {{ icon("down", "chevron") }}
+    </div>
+    <div class="resp-meta">
+      {% if overall is number %}<span class="resp-stars">{{ overall | answer("stars") }}</span>{% endif %}
+      <time datetime="{{ r.created_at }}">{{ r.created_at[:16] | replace("T", " ") }} UTC</time>
+    </div>
+  </summary>
+  <dl>
+    {% for q in questions %}
+    {% set value = r.answers.get(q.id) %}
+    {% if value is not none %}
+    <dt>{{ q.label }}</dt>
+    <dd {% if q.type == "contact" %}class="contact"{% endif %}>{{ value | answer(q.type) }}</dd>
+    {% endif %}
+    {% endfor %}
+    {% for qid, value in r.orphans.items() %}
+    <dt>{{ qid }} <span class="chip">deleted question</span></dt>
+    <dd>{{ value | answer }}</dd>
+    {% endfor %}
+  </dl>
+  <div class="resp-actions">
+    <a class="btn secondary small" href="{{ url_for('admin_response_edit', rid=r.id) }}">{{ icon("edit") }}Edit</a>
+    <form method="post" action="{{ url_for('admin_response_delete', rid=r.id) }}"
+          data-ajax="remove" data-confirm="Delete response #{{ r.ticket }}? This can't be undone.">
+      <button class="btn danger small">{{ icon("trash") }}Delete</button>
+    </form>
+  </div>
+</details>
+{% else %}
+<div class="card empty">
+  <p><strong>No responses yet.</strong></p>
+  <p class="muted">Send someone the link to your survey. Add <code>?for=Name</code> to greet them by name.</p>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{# Admin: the question list. Move and delete happen in place via static/admin.js. #}
+{% from "_icons.html" import icon, TYPE_ICONS %}
+
+{% block title %}Questions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1>Questions</h1>
+  <span class="count-pill" data-count>{{ questions | length }}</span>
+</div>
+<p class="hint">Tap a question to edit it. Changes go live immediately, and existing responses keep their answers.</p>
+
+<ol class="qlist">
+  {% for q in questions %}
+  <li class="card qcard" id="q-{{ q.id }}">
+    <a class="qcard-main" href="{{ url_for('admin_question_edit', qid=q.id) }}">
+      <span class="qnum">{{ loop.index }}</span>
+      <span class="qcard-text">
+        <strong>{{ q.label }}</strong>
+        <span class="chips">
+          <span class="chip">{{ icon(TYPE_ICONS.get(q.type, "text")) }}{{ types.get(q.type, q.type) }}</span>
+          {% if q.required %}<span class="chip chip-accent">Required</span>{% endif %}
+        </span>
+        {% if q.options or q.rows %}
+        <span class="qcard-sub">{{ (q.options or q.rows) | join(" · ") }}</span>
+        {% endif %}
+      </span>
+      {{ icon("edit", "qcard-edit") }}
+    </a>
+    <div class="qcard-actions">
+      <form method="post" action="{{ url_for('admin_question_move', qid=q.id) }}" data-ajax="move">
+        <input type="hidden" name="direction" value="up">
+        <button class="icon-btn" aria-label="Move up" {% if loop.first %}disabled{% endif %}>{{ icon("up") }}</button>
+      </form>
+      <form method="post" action="{{ url_for('admin_question_move', qid=q.id) }}" data-ajax="move">
+        <input type="hidden" name="direction" value="down">
+        <button class="icon-btn" aria-label="Move down" {% if loop.last %}disabled{% endif %}>{{ icon("down") }}</button>
+      </form>
+      <span class="spacer"></span>
+      <form method="post" action="{{ url_for('admin_question_delete', qid=q.id) }}"
+            data-ajax="remove" data-confirm="Delete this question?">
+        <button class="icon-btn danger" aria-label="Delete question">{{ icon("trash") }}</button>
+      </form>
+    </div>
+  </li>
+  {% else %}
+  <li class="card empty"><p class="muted">No questions yet. Add your first one.</p></li>
+  {% endfor %}
+</ol>
+
+<form method="post" action="{{ url_for('admin_questions_reset') }}" class="reset-form"
+      data-confirm="Replace all questions with the {{ preset }} defaults?">
+  <button class="link-btn">Reset to the default questions</button>
+</form>
+
+<a class="fab" href="{{ url_for('admin_question_edit') }}">{{ icon("plus") }}<span>Add question</span></a>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+{% endblock %}

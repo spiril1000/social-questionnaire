@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{# Admin: edit one submitted response. Field names match the survey, so parse_answers() reads both. #}
+{% from "_icons.html" import icon %}
+
+{% block title %}Edit response #{{ ticket }}{% endblock %}
+
+{# A <select> with an empty "—" choice; choices are (value, label) pairs #}
+{% macro select(name, choices, current) %}
+<select name="{{ name }}">
+  <option value="">—</option>
+  {% for value, label in choices %}
+  <option value="{{ value }}" {% if current == value|string %}selected{% endif %}>{{ label }}</option>
+  {% endfor %}
+</select>
+{% endmacro %}
+
+{% block content %}
+<a class="back-link" href="{{ url_for('admin', _anchor='r-' ~ rid) }}">{{ icon("back") }}Responses</a>
+<div class="page-head">
+  <h1>Edit response</h1>
+  <span class="count-pill">#{{ ticket }}</span>
+</div>
+<p class="hint">Leave an answer on "—" or empty to remove it.</p>
+
+{% set star_choices = range(1, 6) | zip(range(1, 6) | map("answer", "stars")) %}
+{% set nps_choices = range(0, 11) | zip(range(0, 11)) %}
+{% set contact_choices = contact_methods | map(attribute=0) | zip(contact_methods | map(attribute=1)) %}
+
+<form method="post" class="stack">
+  <div class="card form-card">
+    <label class="field">
+      <span>Sent to (?for=)</span>
+      <input type="text" name="for_name" maxlength="50" value="{{ for_name }}">
+    </label>
+  </div>
+
+  {% for q in questions %}
+  <div class="card form-card">
+    {% if q.type == "matrix" %}
+    <p class="field-title">{{ q.label }}</p>
+    {% for row in q.rows %}
+    <label class="field inline">
+      <span>{{ row }}</span>
+      {{ select(q.id ~ "_" ~ loop.index0, star_choices, values.get(q.id ~ "_" ~ loop.index0)) }}
+    </label>
+    {% endfor %}
+
+    {% elif q.type == "contact" %}
+    <p class="field-title">{{ q.label }}</p>
+    <div class="field-row">
+      {{ select(q.id, contact_choices, values.get(q.id)) }}
+      <input type="text" name="{{ q.id }}_handle" maxlength="200" value="{{ values.get(q.id ~ '_handle', '') }}"
+             placeholder="Username or number" aria-label="Username or number">
+    </div>
+
+    {% else %}
+    <label class="field">
+      <span>{{ q.label }}</span>
+      {% if q.type == "stars" %}
+      {{ select(q.id, star_choices, values.get(q.id)) }}
+      {% elif q.type == "nps" %}
+      {{ select(q.id, nps_choices, values.get(q.id)) }}
+      {% elif q.type == "choice" %}
+      {{ select(q.id, q.options | zip(q.options), values.get(q.id)) }}
+      {% if values.get(q.id) and values.get(q.id) not in q.options %}
+      <small>Saved answer "{{ values.get(q.id) }}" is no longer an option, so saving will clear it.</small>
+      {% endif %}
+      {% elif q.multiline %}
+      <textarea name="{{ q.id }}" rows="4" maxlength="2000">{{ values.get(q.id, '') }}</textarea>
+      {% else %}
+      <input type="text" name="{{ q.id }}" maxlength="2000" value="{{ values.get(q.id, '') }}">
+      {% endif %}
+    </label>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="savebar">
+    <a class="btn secondary" href="{{ url_for('admin', _anchor='r-' ~ rid) }}">Cancel</a>
+    <button class="btn primary">{{ icon("check") }}Save</button>
+  </div>
+</form>
+{% endblock %}
