@@ -16,11 +16,12 @@ Then open http://localhost:8000/?for=Alex for the survey and http://localhost:80
   - one question per screen, with swipe-style card animations and an animated gradient background
   - a back button, progress bars and auto-advance after tapping an answer
   - personal links: `?for=Alex` greets them by name
-- **Question types:** star rating, multiple choice, rating grid, 0–10 score, free text, and contact details (Instagram, Snapchat, Facebook, phone, other, or "don't contact me", plus their username or number).
+- **Question types:** star rating, multiple choice, rating grid, 0–10 score, free text, and contact details (Instagram, Snapchat, Facebook, phone, other, or "don't contact me", plus their username or number). Any question can have a small subtitle under it and an optional comment box under the answers.
 - **Three presets** (`hookup`, `ghosted`, `date`) with their own questions and jokes. Pick one per site and change everything afterwards in the admin.
 - **Mobile-first admin:**
   - read, edit and delete responses
-  - add, edit, reorder and delete questions
+  - share the survey link (optionally with their name) straight from the phone's share menu
+  - add, edit, reorder, preview and delete questions
   - 5 colour schemes, 5 logos and every text on the survey, with a live preview and reset-to-preset
 - **Installable admin:** on a phone the admin can be added to the home screen as an app. It opens on `/admin`, never the survey.
 - **Notifications (optional):** each submission can be POSTed as JSON to a webhook, e.g. [n8n](https://n8n.io) → Telegram/Discord.
@@ -85,8 +86,8 @@ The app listens on port 8000 and works behind nginx, Traefik, Caddy and similar,
 
 | Page | |
 | --- | --- |
-| `/admin` | Responses, newest first. Edit or delete them. Answers to questions you've since deleted are kept and labelled. |
-| `/admin/questions` | Add, edit, reorder and delete questions. Changes go live immediately. |
+| `/admin` | **Share the survey:** type their name (optional) and tap Share to open the phone's share menu with the `?for=Name` link (on a computer the link is copied). Below that, the responses, newest first. Edit or delete them. Answers to questions you've since deleted are kept and labelled. |
+| `/admin/questions` | Add, edit, reorder and delete questions. Changes go live immediately. Each question can have a subtitle and a comment field. **Preview** opens the survey without storing anything; in the question editor it shows your unsaved question and starts on it. |
 | `/admin/settings` | Colour scheme, logo, company name and every text. **Preview** shows unsaved changes in a new tab, and nothing you submit there is stored. **Reset settings to a preset…** can also replace the questions. |
 
 Phones show an install banner on the admin pages:
@@ -109,11 +110,12 @@ If `N8N_WEBHOOK_URL` is set, each submission is POSTed to it in the background. 
   "contact": { "method": "Instagram", "handle": "@alex" },
   "comment": "...",
   "answers": { "overall": 4, "reason": "Witness protection", "...": "..." },
+  "comments": { "overall": "Great vibes, questionable playlist" },
   "questions": { "overall": "How would you rate your experience before the disappearance?", "...": "..." },
   "submitted_at": "2026-10-22T12:00:00+00:00"
 }
 ```
-`rating`, `nps`, `contact` and `comment` are shortcuts for the preset questions with those ids. They're empty if you delete those questions. `answers` and `questions` always contain everything.
+`rating`, `nps`, `contact` and `comment` are shortcuts for the preset questions with those ids. They're empty if you delete those questions. `answers` and `questions` always contain everything. `comments` has the text from the comment fields of questions that have one, by question id.
 
 ## Security
 

@@ -7,8 +7,7 @@
 {% block content %}
 <div class="page-head">
   <h1>Questions</h1>
-  <span class="count-pill" data-count>{{ questions | length }}</span>
-</div>
+  <span class="count-pill" data-count>{{ questions | length }}</span></div>
 <p class="hint">Tap a question to edit it. Changes go live immediately, and existing responses keep their answers.</p>
 
 <ol class="qlist">
@@ -18,9 +17,11 @@
       <span class="qnum">{{ loop.index }}</span>
       <span class="qcard-text">
         <strong>{{ q.label }}</strong>
+        {% if q.subtitle %}<span class="qcard-subtitle">{{ q.subtitle }}</span>{% endif %}
         <span class="chips">
           <span class="chip">{{ icon(TYPE_ICONS.get(q.type, "text")) }}{{ types.get(q.type, q.type) }}</span>
           {% if q.required %}<span class="chip chip-accent">Required</span>{% endif %}
+          {% if q.comment %}<span class="chip">{{ icon("comment") }}Comment</span>{% endif %}
         </span>
         {% if q.options or q.rows %}
         <span class="qcard-sub">{{ (q.options or q.rows) | join(" · ") }}</span>
@@ -54,7 +55,10 @@
   <button class="link-btn">Reset to the default questions</button>
 </form>
 
-<a class="fab" href="{{ url_for('admin_question_edit') }}">{{ icon("plus") }}<span>Add question</span></a>
+<div class="fabs">
+  <a class="btn secondary" href="{{ url_for('admin_preview') }}" target="_blank" rel="noopener">{{ icon("eye") }}Preview</a>
+  <a class="btn primary" href="{{ url_for('admin_question_edit') }}">{{ icon("plus") }}Add question</a>
+</div>
 {% endblock %}
 
 {% block scripts %}

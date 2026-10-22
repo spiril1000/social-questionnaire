@@ -39,12 +39,14 @@ Guidance for Claude Code in this repo. The README is the user-facing documentati
   - `<id>` for most types
   - `<id>_<row index>` for a rating grid
   - `<id>_handle` for contact details
+  - `<id>_comment` for the optional comment under a question with `"comment": true`. Comments are stored in their own `comments` column (JSON), not in `answers`, and `parse_comments()` reads them.
 - **New settings:** add a default in `BASE_SETTINGS`, a `field(...)` in `admin_settings.html`, and use `{{ settings.x }}` where it's shown. Existing sites pick up the default automatically through `load_settings()`.
 - **Security must stay:**
   - Admin Basic auth only applies when `PRODUCTION=true`, which the Dockerfile sets.
   - Admin POSTs require a same-origin `Origin` or `Referer`.
   - The honeypot field, the per-IP rate limit (`PROXY_COUNT` decides which proxy headers to trust), and the text length caps.
   - The local dev server binds `0.0.0.0` with `use_debugger=False`.
+- **Previews store nothing:** `/admin/preview` renders the survey with unsaved settings (`preview=settings`) or an unsaved question (`preview=question`, `?qid=`), and its form posts back to itself to show the thank-you page.
 - **Public endpoints by design:** `/favicon.svg`, `/admin/icon*` and `/admin/manifest.webmanifest`, because phones fetch them without logging in.
 - **Comment density:** match the existing code, which has short "why" comments and section headers. Keep the README updated when behaviour changes.
 - **No personal data in this repo.** The defaults use neutral "Acme …" brands. The owner's own branding lives in their sites' admin settings.

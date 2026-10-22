@@ -31,9 +31,15 @@
       return method === "none" || (method !== null && contactHandle(slide) !== "");
     }
     if (slide.querySelector("input[type=radio]:checked")) return true;
-    return Array.prototype.some.call(slide.querySelectorAll("input[type=text], textarea"), function (el) {
+    return Array.prototype.some.call(slide.querySelectorAll("input[type=text]:not(.comment), textarea"), function (el) {
       return el.value.trim() !== "";
     });
+  }
+
+  // The optional comment field under the answers (not an answer by itself)
+  function hasComment(slide) {
+    var input = slide.querySelector(".comment");
+    return !!input && input.value.trim() !== "";
   }
 
   // Fully answered, e.g. every row of a rating grid. Used for auto-advance.
@@ -65,7 +71,7 @@
   function updateNextButton(slide) {
     var button = slide.querySelector("[data-next]");
     if (!button || slide.classList.contains("intro")) return;
-    var skip = !slide.hasAttribute("data-required") && !isAnswered(slide) && !missingHandle(slide);
+    var skip = !slide.hasAttribute("data-required") && !isAnswered(slide) && !missingHandle(slide) && !hasComment(slide);
     button.textContent = skip ? "Skip" : "Next";
     button.classList.toggle("is-skip", skip);
   }
@@ -155,8 +161,10 @@
     var error = slide.querySelector(".slide-error");
     if (error && !blocker(slide)) error.hidden = true;
     updateNextButton(slide);
-    // Tapping an answer moves on by itself, after a beat so the pop animation is visible
+    // Tapping an answer moves on by itself, after a beat so the pop animation is visible.
+    // Not when there's a comment field, or nobody would get to use it.
     if (AUTO_ADVANCE[slide.dataset.type] && e.target.type === "radio" && isComplete(slide)
+        && !slide.querySelector(".comment")
         && slides.indexOf(slide) === current && current < slides.length - 1) {
       clearTimeout(advanceTimer);
       advanceTimer = setTimeout(next, 450);
@@ -196,9 +204,10 @@
     if (slide.dataset.type === "contact") updateContact(slide, false);
   });
 
-  // Start on the first question the server rejected, otherwise on the intro
+  // Start on the first question the server rejected, otherwise on the intro (or, when previewing
+  // one question in the admin, on that question)
   var firstError = slides.findIndex(function (s) { return s.hasAttribute("data-error"); });
-  var start = firstError > 0 ? firstError : 0;
+  var start = firstError > 0 ? firstError : parseInt(form.dataset.start, 10) || 0;
   history.replaceState({ step: start }, "");
   show(start);
 })();

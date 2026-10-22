@@ -195,22 +195,20 @@ code { background: #eef0f4; padding: 1px 6px; border-radius: 6px; font-size: 0.8
   font-weight: 650;
   text-decoration: none;
 }
-.fab {
+/* Floating buttons, bottom right above the tab bar: <div class="fabs"><a class="fab">…</a></div> */
+.fabs {
   position: fixed;
+  left: max(16px, calc(50% - 364px));
   right: max(16px, calc(50% - 364px));
   bottom: calc(var(--tabbar-h) + 16px + env(safe-area-inset-bottom));
   z-index: 15;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 20px;
-  border-radius: 999px;
-  background: var(--grad);
-  color: #fff;
-  font-weight: 700;
-  text-decoration: none;
-  box-shadow: 0 10px 24px rgba(var(--glow), 0.4);
+  display: flex;
+  justify-content: space-between; /* Preview on the left, the main action on the right */
+  gap: 10px;
+  pointer-events: none; /* the gap between the buttons doesn't block the list */
 }
+.fabs .btn { flex: none; pointer-events: auto; }
+.fabs .btn.secondary { box-shadow: inset 0 0 0 1.5px var(--line), 0 10px 24px rgba(16, 24, 40, 0.15); }
 .reset-form { text-align: center; margin: 22px 0 8px; }
 
 .toast {
@@ -227,7 +225,14 @@ code { background: #eef0f4; padding: 1px 6px; border-radius: 6px; font-size: 0.8
 }
 @keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
-/* 4. Responses page: one <details> card per response */
+/* 4. Responses page: the share box, then one <details> card per response */
+.share-card.form-card { margin-bottom: 14px; } /* .form-card resets the margin */
+.share-card .field > label { font-weight: 650; font-size: 0.9rem; }
+.share-row { display: flex; gap: 8px; }
+.share-row .btn { flex: none; min-width: 108px; }
+.share-url { overflow-wrap: anywhere; }
+dd.comment { display: flex; gap: 6px; margin-top: 6px; color: var(--muted); font-weight: 500; font-style: italic; }
+dd.comment .icon { width: 16px; height: 16px; margin-top: 3px; }
 .response { margin-bottom: 10px; overflow: hidden; }
 .response summary { list-style: none; padding: 14px 16px; cursor: pointer; }
 .response summary::-webkit-details-marker { display: none; }
@@ -265,6 +270,7 @@ dd.contact { color: var(--c1); font-weight: 700; }
 }
 .qcard-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .qcard-text strong { font-weight: 650; line-height: 1.3; }
+.qcard-subtitle { font-size: 0.85rem; color: var(--muted); margin-top: -4px; overflow-wrap: anywhere; }
 .qcard-sub { font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 .qcard-edit { color: var(--muted); margin-top: 4px; }
 .qcard-actions { display: flex; gap: 6px; padding: 0 12px 12px 56px; }
@@ -281,10 +287,14 @@ legend + * { clear: both; }
 .field > span, .field-title { font-weight: 650; font-size: 0.9rem; }
 .field-title { margin: 0 0 10px; }
 .field small { color: var(--muted); font-size: 0.8rem; }
+.field .optional { font-style: normal; font-weight: 500; color: var(--muted); font-size: 0.8rem; margin-left: 4px; }
 .field.inline { grid-template-columns: 1fr minmax(140px, 45%); align-items: center; margin-bottom: 8px; }
 .field.inline > span { font-weight: 500; }
 .field-row { display: grid; grid-template-columns: minmax(130px, 40%) 1fr; gap: 8px; }
 .hint-card { color: var(--muted); font-size: 0.9rem; }
+.comment-field { margin-top: 12px; }
+.field:not(.inline) + .comment-field { margin-top: 0; } /* that field already has a bottom margin */
+.comment-field > span { font-weight: 500; color: var(--muted); }
 .error-card { padding: 12px 16px; background: #fef2f2; color: #b91c1c; margin-bottom: 12px; }
 .error-card ul { margin: 0; padding-left: 18px; }
 
@@ -358,6 +368,7 @@ input[type=text]:focus, textarea:focus, select:focus {
   font-weight: 650;
   cursor: pointer;
 }
+.switch > span small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
 .switch + .switch { border-top: 1px solid var(--line); }
 .switch[hidden] + .switch { border-top: 0; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
@@ -392,7 +403,13 @@ input[type=text]:focus, textarea:focus, select:focus {
   padding: 14px 0 12px;
   background: linear-gradient(rgba(243, 244, 247, 0), var(--bg) 35%);
 }
+.savebar .btn { padding-inline: 12px; } /* three buttons fit on a phone */
 .savebar .btn.preview { order: -1; } /* after Save in the HTML (so Enter saves), shown first */
+.savebar .btn.cancel { order: -2; } /* ...but after Cancel */
+/* Two buttons at their own width, pushed to the sides: looks like the .fabs on the questions page */
+.savebar.spread { justify-content: space-between; padding-bottom: 16px; }
+.savebar.spread .btn { flex: none; padding-inline: 18px; }
+.savebar.spread .btn.secondary { box-shadow: inset 0 0 0 1.5px var(--line), 0 10px 24px rgba(16, 24, 40, 0.15); }
 
 /* 7. Reset-to-preset dialog: a bottom sheet on phones, centred on larger screens */
 .preset-dialog {
@@ -481,7 +498,7 @@ input[type=text]:focus, textarea:focus, select:focus {
   .tabbar a.active { box-shadow: inset 0 -3px 0 var(--c1); }
   .tabbar a .icon { width: 20px; height: 20px; }
   .admin-main { padding: 24px 24px 96px; }
-  .fab { bottom: 24px; }
+  .fabs { bottom: 24px; left: max(24px, calc(50% - 356px)); right: max(24px, calc(50% - 356px)); }
   .savebar { bottom: 0; }
   .type-grid { grid-template-columns: repeat(3, 1fr); }
   .swatch-grid, .logo-grid { grid-template-columns: repeat(5, 1fr); }

@@ -68,6 +68,11 @@
   </fieldset>
 
   <fieldset class="card form-card">
+    <legend>Questions</legend>
+    {{ field("comment_placeholder", "Comment field placeholder", "Shown in the comment box of questions that have one.") }}
+  </fieldset>
+
+  <fieldset class="card form-card">
     <legend>Thank-you screen</legend>
     {{ field("thanks_title", "Headline") }}
     {{ field("thanks_text", "Text", area=true) }}
@@ -79,10 +84,11 @@
     {{ field("fine_print", "Bottom of the intro screen", area=true) }}
   </fieldset>
 
-  <div class="savebar">
+  <div class="savebar spread">
     {# Save comes first so Enter in a text field saves; CSS shows Preview on the left #}
     <button class="btn primary">{{ icon("check") }}Save</button>
-    <button class="btn secondary preview" formaction="{{ url_for('admin_settings_preview') }}" formtarget="_blank">
+    <button class="btn secondary preview" name="preview" value="settings"
+            formaction="{{ url_for('admin_preview') }}" formtarget="_blank">
       {{ icon("eye") }}Preview
     </button>
   </div>

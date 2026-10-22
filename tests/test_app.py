@@ -187,7 +187,7 @@ def test_admin_rejects_cross_site_posts(client):
 
 
 @pytest.mark.parametrize("page", ["/admin", "/admin/questions", "/admin/questions/new",
-                                  "/admin/questions/overall", "/admin/settings"])
+                                  "/admin/questions/overall", "/admin/settings", "/admin/preview"])
 def test_admin_pages_render(client, page):
     assert client.get(page, headers=AUTH).status_code == 200
 
@@ -221,6 +221,61 @@ def test_edit_response_keeps_answers_to_deleted_questions(m, client):
     assert b"deleted question" in client.get("/admin", headers=AUTH).data
 
 
+def test_share_box_links_to_the_survey(client):
+    html = client.get("/admin", headers=AUTH).data
+    assert b'id="share"' in html and b'action="http://localhost/"' in html and b'name="for"' in html
+
+
+def stored_comments(m):
+    with closing(sqlite3.connect(m.DB_PATH)) as db:
+        return [json.loads(c) if c else None for (c,) in db.execute("SELECT comments FROM responses ORDER BY id")]
+
+
+def test_question_comments(m, client):
+    questions = m.load_questions()
+    questions[0]["comment"] = True
+    m.save_questions(questions)
+    qid = questions[0]["id"]
+
+    survey = client.get("/").data.decode()
+    assert f'name="{qid}_comment"' in survey and 'name="nps_comment"' not in survey
+
+    # Only questions with a comment field get one; it's capped and doesn't count as an answer
+    client.post("/submit", data={**FORM, f"{qid}_comment": " Loved it " + "x" * 600, "nps_comment": "sneaky"})
+    [comments] = stored_comments(m)
+    assert list(comments) == [qid] and comments[qid].startswith("Loved it x") and len(comments[qid]) == m.MAX_COMMENT
+    assert client.post("/submit", data={f"{qid}_comment": "no rating"}).status_code == 400  # overall is required
+    client.post("/submit", data={"overall": "3"})
+    assert stored_comments(m)[1] is None
+
+    html = client.get("/admin", headers=AUTH).data
+    assert b'class="comment"' in html and b"Loved it" in html
+
+    # Editing: the comment can be changed, and it survives turning the comment field off
+    [(rid, _, _), _] = stored_responses(m)
+    client.post(f"/admin/responses/{rid}", headers=SAME_ORIGIN, data={"overall": "4", f"{qid}_comment": "Edited"})
+    assert stored_comments(m)[0] == {qid: "Edited"}
+    del questions[0]["comment"]
+    m.save_questions(questions)
+    assert f'name="{qid}_comment" maxlength="500" value="Edited"'.encode() in client.get(f"/admin/responses/{rid}", headers=AUTH).data
+    client.post(f"/admin/responses/{rid}", headers=SAME_ORIGIN, data={"overall": "4", f"{qid}_comment": ""})
+    assert stored_comments(m)[0] is None
+
+
+def test_comments_column_is_added_to_old_databases(make_app, tmp_path):
+    (tmp_path / "data").mkdir()
+    with closing(sqlite3.connect(tmp_path / "data" / "responses.db")) as db:
+        db.execute("CREATE TABLE responses (id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT NOT NULL, "
+                   "for_name TEXT, answers TEXT NOT NULL)")
+        db.execute("INSERT INTO responses (created_at, answers) VALUES ('2026-01-01T00:00:00+00:00', '{\"overall\": 5}')")
+        db.commit()
+    m = make_app()
+    client = m.app.test_client()
+    assert client.get("/admin", headers=AUTH).status_code == 200
+    assert client.post("/submit", data=FORM).status_code == 302
+    assert stored_comments(m) == [None, None]
+
+
 def test_delete_response(m, client):
     client.post("/submit", data=FORM)
     [(rid, _, _)] = stored_responses(m)
@@ -247,6 +302,12 @@ def test_add_edit_and_delete_question(m, client):
 
     client.post(f"/admin/questions/{new['id']}", headers=SAME_ORIGIN, data={"label": "Snack?", "type": "text"})
     assert m.load_questions()[-1] == {"id": new["id"], "type": "text", "label": "Snack?"}
+
+    client.post(f"/admin/questions/{new['id']}", headers=SAME_ORIGIN,
+                data={"label": "Snack?", "type": "text", "subtitle": "  Be <i>honest</i> ", "comment": "on"})
+    assert m.load_questions()[-1] == {"id": new["id"], "type": "text", "label": "Snack?",
+                                      "subtitle": "Be <i>honest</i>", "comment": True}
+    assert b'<p class="q-sub">Be &lt;i&gt;honest&lt;/i&gt;</p>' in client.get("/").data
 
     assert client.post(f"/admin/questions/{new['id']}/delete", headers=FETCH).status_code == 204
     assert new["id"] not in [q["id"] for q in m.load_questions()]
@@ -298,18 +359,40 @@ def test_reset_settings_to_another_preset(m, client):
 
 
 def test_settings_preview_saves_nothing(m, client):
-    r = client.post("/admin/settings/preview", headers=SAME_ORIGIN,
-                    data={"brand_name": "Unsaved Co", "thanks_title": "Preview thanks!", "color_scheme": "mint"})
+    r = client.post("/admin/preview", headers=SAME_ORIGIN, data={
+        "preview": "settings", "brand_name": "Unsaved Co", "thanks_title": "Preview thanks!", "color_scheme": "mint",
+    })
     assert r.status_code == 200 and b"Unsaved Co" in r.data and b"#047857" in r.data
     assert m.load_settings()["brand_name"] == m.get_preset("hookup")["settings"]["brand_name"]
 
     # Submitting the preview shows the thank-you page with the same unsaved settings
     preview_json = json.dumps(m.parse_settings_form({"brand_name": "Unsaved Co", "thanks_title": "Preview thanks!"}))
-    r = client.post("/admin/settings/preview", headers=SAME_ORIGIN,
+    r = client.post("/admin/preview", headers=SAME_ORIGIN,
                     data={"page": "thanks", "settings_json": preview_json, "overall": "5"})
     assert b"Preview thanks!" in r.data
     assert stored_responses(m) == []
-    assert client.post("/admin/settings/preview", headers=SAME_ORIGIN, data={"settings_json": "not json"}).status_code == 200
+    assert client.post("/admin/preview", headers=SAME_ORIGIN, data={"settings_json": "not json"}).status_code == 200
+
+
+def test_question_preview_saves_nothing(m, client):
+    questions = m.load_questions()
+    # Editing a question: it replaces the saved one, and the preview starts on it
+    r = client.post("/admin/preview?qid=nps", headers=SAME_ORIGIN, data={
+        "preview": "question", "label": "Unsaved label", "subtitle": "Unsaved subtitle", "type": "stars", "comment": "on",
+    })
+    html = r.data.decode()
+    assert r.status_code == 200 and "Unsaved label" in html and "Unsaved subtitle" in html and 'name="nps_comment"' in html
+    index = [q["id"] for q in questions].index("nps")
+    assert f'data-start="{index + 1}"' in html and html.count('class="seg"') == len(questions)
+    # A new question goes last
+    html = client.post("/admin/preview", headers=SAME_ORIGIN,
+                       data={"preview": "question", "label": "Brand new", "type": "text"}).data.decode()
+    assert "Brand new" in html and f'data-start="{len(questions) + 1}"' in html
+    assert m.load_questions() == questions
+
+    # The questions page opens it as saved, on the intro
+    r = client.get("/admin/preview", headers=AUTH)
+    assert b"not saved" in r.data and b'data-start="0"' in r.data
 
 
 # --- Icons and the installable admin ----------------------------------------------------------

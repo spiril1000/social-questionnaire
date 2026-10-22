@@ -72,6 +72,12 @@
       {% endif %}
     </label>
     {% endif %}
+    {% if q.id in commentable %}
+    <label class="field comment-field">
+      <span>{{ icon("comment", "inline-icon") }} Comment</span>
+      <input type="text" name="{{ q.id }}_comment" maxlength="500" value="{{ comments.get(q.id, '') }}">
+    </label>
+    {% endif %}
   </div>
   {% endfor %}
 

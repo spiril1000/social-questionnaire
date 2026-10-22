@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{# Admin: all responses, newest first, each with Edit and Delete. #}
+{# Admin: a share box for the survey link, then all responses, newest first, each with Edit and Delete. #}
 {% from "_icons.html" import icon %}
 
 {% block title %}Responses{% endblock %}
@@ -9,6 +9,20 @@
   <h1>Responses</h1>
   <span class="count-pill" data-count>{{ responses | length }}</span>
 </div>
+
+{# Without JavaScript this simply opens the link; with it, the phone's share menu (needs https),
+   otherwise the link is copied #}
+<form class="card form-card share-card" id="share" method="get" action="{{ url_for('survey', _external=True) }}"
+      target="_blank" data-title="{{ settings.page_title }}">
+  <div class="field">
+    <label for="share-name">Share the survey</label>
+    <div class="share-row">
+      <input type="text" id="share-name" name="for" maxlength="50" autocomplete="off" placeholder="Their name (optional)">
+      <button class="btn primary small">{{ icon("share") }}<span data-share-label>Share</span></button>
+    </div>
+    <small class="share-url" data-share-url>{{ url_for('survey', _external=True) }}</small>
+  </div>
+</form>
 
 {% for r in responses %}
 {% set overall = r.answers.get("overall") %}
@@ -27,14 +41,17 @@
   <dl>
     {% for q in questions %}
     {% set value = r.answers.get(q.id) %}
-    {% if value is not none %}
+    {% set comment = r.comments.get(q.id) %}
+    {% if value is not none or comment %}
     <dt>{{ q.label }}</dt>
-    <dd {% if q.type == "contact" %}class="contact"{% endif %}>{{ value | answer(q.type) }}</dd>
+    {% if value is not none %}<dd {% if q.type == "contact" %}class="contact"{% endif %}>{{ value | answer(q.type) }}</dd>{% endif %}
+    {% if comment %}<dd class="comment">{{ icon("comment") }}<span>{{ comment }}</span></dd>{% endif %}
     {% endif %}
     {% endfor %}
     {% for qid, value in r.orphans.items() %}
     <dt>{{ qid }} <span class="chip">deleted question</span></dt>
-    <dd>{{ value | answer }}</dd>
+    {% if value is not none %}<dd>{{ value | answer }}</dd>{% endif %}
+    {% if r.comments.get(qid) %}<dd class="comment">{{ icon("comment") }}<span>{{ r.comments[qid] }}</span></dd>{% endif %}
     {% endfor %}
   </dl>
   <div class="resp-actions">
@@ -48,11 +65,65 @@
 {% else %}
 <div class="card empty">
   <p><strong>No responses yet.</strong></p>
-  <p class="muted">Send someone the link to your survey. Add <code>?for=Name</code> to greet them by name.</p>
+  <p class="muted">Share the link above. Add their name to greet them by name.</p>
 </div>
 {% endfor %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='admin.js') }}"></script>
+<script>
+  // Share the survey link (with ?for=Name) through the phone's share menu, or copy it on desktop
+  (function () {
+    var form = document.getElementById("share");
+    var name = form.elements["for"];
+    var shown = form.querySelector("[data-share-url]");
+    var label = form.querySelector("[data-share-label]");
+    var resetTimer = null;
+
+    function link() {
+      var url = new URL(form.action);
+      if (name.value.trim()) url.searchParams.set("for", name.value.trim());
+      return url.href;
+    }
+
+    function done(text) {
+      label.textContent = text;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(function () { label.textContent = "Share"; }, 2000);
+    }
+
+    name.addEventListener("input", function () { shown.textContent = link(); });
+
+    // Copying without the Clipboard API, which (like the share menu) only exists on https pages
+    function copyOldStyle(text) {
+      var area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      area.setSelectionRange(0, text.length); // iOS
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (err) {}
+      area.remove();
+      return ok;
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var url = link();
+      if (navigator.share) {
+        navigator.share({ title: form.dataset.title, url: url }).catch(function () {}); // cancelled
+      } else if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(function () { done("Copied"); }, function () {
+          done(copyOldStyle(url) ? "Copied" : "Copy failed");
+        });
+      } else {
+        done(copyOldStyle(url) ? "Copied" : "Copy failed");
+      }
+    });
+  })();
+</script>
 {% endblock %}

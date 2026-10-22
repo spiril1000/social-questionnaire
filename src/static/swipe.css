@@ -172,6 +172,7 @@ h2 { font-size: 1.6rem; line-height: 1.2; margin: 0 0 24px; font-weight: 800; le
   -webkit-background-clip: text; background-clip: text;
   color: transparent;
 }
+.q-sub { margin: -14px 0 24px; color: var(--muted); font-size: 0.98rem; line-height: 1.45; }
 .muted { color: var(--muted); font-size: 0.92rem; }
 .required { color: var(--c2); }
 .fine-print { font-size: 0.68rem; color: var(--muted); text-align: center; margin: 14px 0 0; }
@@ -325,6 +326,9 @@ textarea, input[type=text], input[type=tel] {
   transition: box-shadow 0.2s;
 }
 textarea:focus, input[type=text]:focus, input[type=tel]:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--c2); background: #fff; }
+
+/* The optional comment under a question's answers: smaller than a real text answer */
+input.comment { margin-top: 18px; padding: 11px 14px; border-radius: 14px; font-size: 1rem; } /* <16px makes iOS zoom in */
 
 .slide-error { color: var(--c1); font-weight: 700; margin: 14px 0 0; text-align: center; }
 

@@ -23,6 +23,12 @@
       <textarea name="label" rows="3" maxlength="300" required
                 placeholder="e.g. How would you rate the conversation?">{{ question.label or '' }}</textarea>
     </label>
+    <label class="field">
+      <span>Subtitle <em class="optional">optional</em></span>
+      <textarea name="subtitle" rows="2" maxlength="300"
+                placeholder="e.g. Be honest, it's anonymous. Mostly.">{{ question.subtitle or '' }}</textarea>
+      <small>Small text shown under the question.</small>
+    </label>
   </div>
 
   <fieldset class="card form-card">
@@ -71,11 +77,20 @@
       <span>Required</span>
       <input type="checkbox" name="required" role="switch" {% if question.required %}checked{% endif %}><i></i>
     </label>
+    <label class="switch">
+      <span>Comment field<small>A small optional text box under the answers</small></span>
+      <input type="checkbox" name="comment" role="switch" {% if question.comment %}checked{% endif %}><i></i>
+    </label>
   </div>
 
   <div class="savebar">
-    <a class="btn secondary" href="{{ url_for('admin_questions') }}">Cancel</a>
+    <a class="btn secondary cancel" href="{{ url_for('admin_questions') }}">Cancel</a>
+    {# Save comes first so Enter saves; CSS shows Cancel, Preview, Save #}
     <button class="btn primary">{{ icon("check") }}Save</button>
+    <button class="btn secondary preview" name="preview" value="question" formtarget="_blank"
+            formaction="{{ url_for('admin_preview', qid=request.view_args.get('qid')) }}">
+      {{ icon("eye") }}Preview
+    </button>
   </div>
 </form>
 {% endblock %}

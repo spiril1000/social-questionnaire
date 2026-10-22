@@ -7,7 +7,8 @@ Pages
     /thanks             the "ticket received" page after submitting
     /admin              responses (view, edit, delete)
     /admin/questions    question editor
-    /admin/settings     colour scheme, logo, texts, preview and reset-to-preset
+    /admin/settings     colour scheme, logo, texts and reset-to-preset
+    /admin/preview      the survey with unsaved settings or an unsaved question; stores nothing
 
 Storage
     CONFIG_DIR/questions.json   the questions, seeded from the preset on first start
@@ -73,6 +74,7 @@ RATE_LIMIT = 5  # survey submissions per IP...
 RATE_WINDOW = 3600  # ...per this many seconds
 TICKET_OFFSET = 4800  # ticket number = response id + this, so we look like a busy business
 MAX_LIST_ITEMS = 20  # options / rows per question
+MAX_COMMENT = 500  # the optional comment under a question
 CONTACT_LABELS = {key: label for key, label, _ in CONTACT_METHODS}
 
 app = Flask(__name__)
@@ -97,9 +99,13 @@ def init_storage():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 created_at TEXT NOT NULL,   -- ISO 8601, UTC
                 for_name TEXT,              -- the ?for=Name the link was sent with
-                answers TEXT NOT NULL       -- JSON: {question id: answer}
+                answers TEXT NOT NULL,      -- JSON: {question id: answer}
+                comments TEXT               -- JSON: {question id: comment}, for questions with a comment field
             )"""
         )
+        # Databases created before comments existed
+        if "comments" not in {row[1] for row in db.execute("PRAGMA table_info(responses)")}:
+            db.execute("ALTER TABLE responses ADD COLUMN comments TEXT")
 
 
 init_storage()
@@ -218,6 +224,16 @@ def parse_answers(form, questions):
     return answers, missing
 
 
+def parse_comments(form, qids):
+    """The optional comments (field <id>_comment) under the given questions: {question id: text}."""
+    comments = {}
+    for qid in qids:
+        text = (form.get(f"{qid}_comment") or "").strip()[:MAX_COMMENT]
+        if text:
+            comments[qid] = text
+    return comments
+
+
 def answers_to_form(answers, questions):
     """The reverse of parse_answers(): stored answers as form values, to prefill the admin edit form."""
     method_keys = {label: key for key, label, _ in CONTACT_METHODS}
@@ -250,8 +266,13 @@ def parse_question_form(form):
         qtype = "text"
 
     question = {"type": qtype, "label": label}
+    subtitle = (form.get("subtitle") or "").strip()[:300]
+    if subtitle:
+        question["subtitle"] = subtitle
     if form.get("required"):
         question["required"] = True
+    if form.get("comment"):
+        question["comment"] = True
     if qtype == "choice":
         question["options"] = split_lines(form.get("options"))
         if len(question["options"]) < 2:
@@ -400,10 +421,11 @@ def admin_done(endpoint, anchor=None):
     return redirect(url_for(endpoint, _anchor=anchor))
 
 
-def render_survey(questions, for_name, values=None, errors=(), **extra):
+def render_survey(questions, for_name, values=None, errors=(), start=0, **extra):
+    """The survey. start: the slide swipe.js opens on (0 is the intro), for previewing one question."""
     return render_template(
         "survey.html", questions=questions, for_name=for_name, values=values or {}, errors=errors,
-        contact_methods=CONTACT_METHODS, **extra,
+        contact_methods=CONTACT_METHODS, start=start, **extra,
     )
 
 
@@ -426,6 +448,7 @@ def submit():
     answers, missing = parse_answers(request.form, questions)
     if missing:  # only happens without JavaScript; swipe.js checks before submitting
         return render_survey(questions, for_name, values=request.form, errors=missing), 400
+    comments = parse_comments(request.form, [q["id"] for q in questions if q.get("comment")])
 
     if rate_limited(request.remote_addr or "unknown"):
         return render_template("thanks.html", ticket=None, rate_limited=True), 429
@@ -433,8 +456,8 @@ def submit():
     created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     db = get_db()
     cur = db.execute(
-        "INSERT INTO responses (created_at, for_name, answers) VALUES (?, ?, ?)",
-        (created_at, for_name or None, json.dumps(answers)),
+        "INSERT INTO responses (created_at, for_name, answers, comments) VALUES (?, ?, ?, ?)",
+        (created_at, for_name or None, json.dumps(answers), json.dumps(comments) if comments else None),
     )
     db.commit()
     ticket = TICKET_OFFSET + cur.lastrowid
@@ -450,6 +473,7 @@ def submit():
         "contact": answers.get("contact"),
         "comment": answers.get("comment"),
         "answers": answers,
+        "comments": comments,
         "questions": {q["id"]: q["label"] for q in questions},
         "submitted_at": created_at,
     })
@@ -536,14 +560,17 @@ def admin():
     responses = []
     for row in get_db().execute("SELECT * FROM responses ORDER BY id DESC"):
         answers = json.loads(row["answers"])
+        comments = json.loads(row["comments"] or "{}")
         responses.append({
             "id": row["id"],
             "ticket": TICKET_OFFSET + row["id"],
             "created_at": row["created_at"],
             "for_name": row["for_name"],
             "answers": answers,
-            # Answers to questions that have since been deleted are still shown
-            "orphans": {k: v for k, v in answers.items() if k not in known and v is not None},
+            "comments": comments,
+            # Answers (and comments) to questions that have since been deleted are still shown
+            "orphans": {k: answers.get(k) for k in {**answers, **comments}
+                        if k not in known and (answers.get(k) is not None or k in comments)},
         })
     return render_template("admin.html", responses=responses, questions=questions)
 
@@ -557,6 +584,9 @@ def admin_response_edit(rid):
         abort(404)
     questions = load_questions()
     stored = json.loads(row["answers"])
+    stored_comments = json.loads(row["comments"] or "{}")
+    # A comment field for questions that have one, or that got a comment before it was turned off
+    commentable = [q["id"] for q in questions if q.get("comment") or q["id"] in stored_comments]
 
     if request.method == "POST":
         # Same validation as the survey, but nothing is required. Answers to deleted questions
@@ -564,9 +594,12 @@ def admin_response_edit(rid):
         answers = parse_answers(request.form, questions)[0]
         known = {q["id"] for q in questions}
         answers = {**{k: v for k, v in stored.items() if k not in known}, **answers}
+        comments = {k: v for k, v in stored_comments.items() if k not in commentable}
+        comments.update(parse_comments(request.form, commentable))
         db.execute(
-            "UPDATE responses SET for_name = ?, answers = ? WHERE id = ?",
-            (clean_name(request.form.get("for_name")) or None, json.dumps(answers), rid),
+            "UPDATE responses SET for_name = ?, answers = ?, comments = ? WHERE id = ?",
+            (clean_name(request.form.get("for_name")) or None, json.dumps(answers),
+             json.dumps(comments) if comments else None, rid),
         )
         db.commit()
         return redirect(url_for("admin", _anchor=f"r-{rid}"))
@@ -574,6 +607,7 @@ def admin_response_edit(rid):
     return render_template(
         "admin_response_edit.html", rid=rid, ticket=TICKET_OFFSET + rid, for_name=row["for_name"] or "",
         questions=questions, values=answers_to_form(stored, questions), contact_methods=CONTACT_METHODS,
+        commentable=commentable, comments=stored_comments,
     )
 
 
@@ -693,23 +727,46 @@ def admin_settings_reset():
     return redirect(url_for("admin_settings", reset=name))
 
 
-@app.post("/admin/settings/preview")
+##########################################################################################
+# Admin: preview
+
+@app.route("/admin/preview", methods=["GET", "POST"])
 @require_admin
-def admin_settings_preview():
-    """The survey (or its thank-you page) with unsaved settings, opened in a new tab by the Preview
-    button. Nothing is stored: the settings travel along as JSON in the preview's own form, and
-    submitting it only shows the thank-you page."""
-    source = request.form
-    if "settings_json" in request.form:
+def admin_preview():
+    """The survey (or its thank-you page) as it would look, opened in a new tab by the Preview
+    buttons. Nothing is stored:
+    - the questions page opens it as is (GET)
+    - the settings page posts its form with preview=settings, to use those unsaved settings
+    - the question editor posts its form with preview=question (and ?qid= when editing), to show
+      the unsaved question in its place, starting on that question
+    The settings travel along as JSON in the preview's own form, and submitting it only shows
+    the thank-you page."""
+    form = request.form
+    source = form if form.get("preview") == "settings" else load_settings()
+    if "settings_json" in form:
         try:
-            source = json.loads(request.form["settings_json"])
+            source = json.loads(form["settings_json"])
         except ValueError:
             source = {}
     g.settings_override = parse_settings_form(source if isinstance(source, dict) else {})
     preview_json = json.dumps(g.settings_override)
-    if request.form.get("page") == "thanks":
+    if form.get("page") == "thanks":
         return render_template("thanks.html", ticket=TICKET_OFFSET + 1, rate_limited=False, preview_json=preview_json)
-    return render_survey(load_questions(), "Alex", preview_json=preview_json)
+
+    questions, start = load_questions(), 0
+    if form.get("preview") == "question":
+        question = parse_question_form(form)[0]
+        qid = request.args.get("qid")
+        index = next((i for i, q in enumerate(questions) if q["id"] == qid), None)
+        if index is None:  # a new question goes last
+            question["id"] = "preview"
+            questions.append(question)
+            index = len(questions) - 1
+        else:
+            question["id"] = qid
+            questions[index] = question
+        start = index + 1  # slide 0 is the intro
+    return render_survey(questions, "Alex", preview_json=preview_json, start=start)
 
 
 ##########################################################################################

@@ -7,7 +7,8 @@ by the "Reset" buttons.
 
 Adding a preset: add an entry to PRESETS with the settings that differ from BASE_SETTINGS and a
 list of questions. Each question needs a unique "id" (answers are stored under it), a "type" and a
-"label"; "required": True makes it mandatory.
+"label"; "required": True makes it mandatory. Optional: a "subtitle" (small text under the question)
+and "comment": True (a free-text comment field under the answers).
 
 Question types:
     stars   - 1-5 rating
@@ -53,6 +54,7 @@ BASE_SETTINGS = {
     "thanks_title": "It's a review!",
     "thanks_text": "A member of our quality assurance team will review your response within 3–5 business days.",
     "thanks_subtext": "We hope to welcome you back soon. Terms and conditions apply.",
+    "comment_placeholder": "Anything to add? (optional)",
     "fine_print": "Responses are processed in accordance with GDPR, local regulations and good vibes. "
                   "All rights reserved, none respected.",
     "color_scheme": "flame",
