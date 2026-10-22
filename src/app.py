@@ -273,6 +273,9 @@ def parse_question_form(form):
         question["required"] = True
     if form.get("comment"):
         question["comment"] = True
+        placeholder = (form.get("comment_placeholder") or "").strip()[:200]
+        if placeholder:  # otherwise the comment_placeholder setting is used
+            question["comment_placeholder"] = placeholder
     if qtype == "choice":
         question["options"] = split_lines(form.get("options"))
         if len(question["options"]) < 2:

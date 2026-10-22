@@ -126,7 +126,7 @@
 
       {% if q.comment %}
       <input type="text" class="comment" name="{{ q.id }}_comment" maxlength="500" autocomplete="off"
-             value="{{ values.get(q.id ~ '_comment', '') }}" placeholder="{{ settings.comment_placeholder }}"
+             value="{{ values.get(q.id ~ '_comment', '') }}" placeholder="{{ q.comment_placeholder or settings.comment_placeholder }}"
              aria-label="Comment">
       {% endif %}
 

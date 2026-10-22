@@ -308,6 +308,16 @@ def test_add_edit_and_delete_question(m, client):
     assert m.load_questions()[-1] == {"id": new["id"], "type": "text", "label": "Snack?",
                                       "subtitle": "Be <i>honest</i>", "comment": True}
     assert b'<p class="q-sub">Be &lt;i&gt;honest&lt;/i&gt;</p>' in client.get("/").data
+    assert b'placeholder="Anything to add? (optional)"' in client.get("/").data  # the setting's default
+
+    # Its own comment placeholder, only kept while the comment field is on
+    client.post(f"/admin/questions/{new['id']}", headers=SAME_ORIGIN,
+                data={"label": "Snack?", "type": "text", "comment": "on", "comment_placeholder": " Spill it "})
+    assert m.load_questions()[-1]["comment_placeholder"] == "Spill it"
+    assert b'placeholder="Spill it"' in client.get("/").data
+    client.post(f"/admin/questions/{new['id']}", headers=SAME_ORIGIN,
+                data={"label": "Snack?", "type": "text", "comment_placeholder": "Spill it"})
+    assert "comment_placeholder" not in m.load_questions()[-1]
 
     assert client.post(f"/admin/questions/{new['id']}/delete", headers=FETCH).status_code == 204
     assert new["id"] not in [q["id"] for q in m.load_questions()]

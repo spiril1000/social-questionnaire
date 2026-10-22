@@ -370,6 +370,7 @@ input[type=text]:focus, textarea:focus, select:focus {
 }
 .switch > span small { display: block; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
 .switch + .switch { border-top: 1px solid var(--line); }
+.switch-extra { margin: 2px 0 6px; animation: toast-in 0.25s ease both; } /* a field that belongs to the switch above */
 .switch[hidden] + .switch { border-top: 0; }
 .switch input { position: absolute; opacity: 0; pointer-events: none; }
 .switch i {

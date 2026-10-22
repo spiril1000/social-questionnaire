@@ -87,7 +87,7 @@ The app listens on port 8000 and works behind nginx, Traefik, Caddy and similar,
 | Page | |
 | --- | --- |
 | `/admin` | **Share the survey:** type their name (optional) and tap Share to open the phone's share menu with the `?for=Name` link (on a computer the link is copied). Below that, the responses, newest first. Edit or delete them. Answers to questions you've since deleted are kept and labelled. |
-| `/admin/questions` | Add, edit, reorder and delete questions. Changes go live immediately. Each question can have a subtitle and a comment field. **Preview** opens the survey without storing anything; in the question editor it shows your unsaved question and starts on it. |
+| `/admin/questions` | Add, edit, reorder and delete questions. Changes go live immediately. Each question can have a subtitle and a comment field, with its own placeholder text or the default from Settings. **Preview** opens the survey without storing anything; in the question editor it shows your unsaved question and starts on it. |
 | `/admin/settings` | Colour scheme, logo, company name and every text. **Preview** shows unsaved changes in a new tab, and nothing you submit there is stored. **Reset settings to a preset…** can also replace the questions. |
 
 Phones show an install banner on the admin pages:

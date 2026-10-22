@@ -8,7 +8,8 @@ by the "Reset" buttons.
 Adding a preset: add an entry to PRESETS with the settings that differ from BASE_SETTINGS and a
 list of questions. Each question needs a unique "id" (answers are stored under it), a "type" and a
 "label"; "required": True makes it mandatory. Optional: a "subtitle" (small text under the question)
-and "comment": True (a free-text comment field under the answers).
+and "comment": True (a free-text comment field under the answers), optionally with its own
+"comment_placeholder" instead of the setting.
 
 Question types:
     stars   - 1-5 rating
@@ -38,7 +39,6 @@ CONTACT_METHODS = [
     ("snapchat", "Snapchat", "Snapchat username"),
     ("facebook", "Facebook", "Name or profile link"),
     ("phone", "Phone number", "+1 555 0100"),
-    ("other", "Other", "Where can we find you?"),
     ("none", "Don't contact me", ""),
 ]
 

@@ -81,6 +81,12 @@
       <span>Comment field<small>A small optional text box under the answers</small></span>
       <input type="checkbox" name="comment" role="switch" {% if question.comment %}checked{% endif %}><i></i>
     </label>
+    <label class="field switch-extra" data-if-comment>
+      <span>Comment placeholder <em class="optional">optional</em></span>
+      <input type="text" name="comment_placeholder" maxlength="200" value="{{ question.comment_placeholder or '' }}"
+             placeholder="{{ settings.comment_placeholder }}">
+      <small>Leave empty to use the default from Settings.</small>
+    </label>
   </div>
 
   <div class="savebar">
@@ -97,15 +103,20 @@
 
 {% block scripts %}
 <script>
-  // Only show the fields that matter for the chosen answer type
+  // Only show the fields that matter for the chosen answer type, and the comment placeholder
+  // only while the comment field is on
   (function () {
     var form = document.getElementById("editor");
-    function update() {
+    var comment = form.elements["comment"];
+    var placeholder = form.querySelector("[data-if-comment]");
+    function update(e) {
       var checked = form.querySelector("input[name=type]:checked");
       var type = checked ? checked.value : "";
       form.querySelectorAll("[data-for]").forEach(function (el) {
         el.hidden = el.getAttribute("data-for") !== type;
       });
+      placeholder.hidden = !comment.checked;
+      if (e && e.target === comment && comment.checked) placeholder.querySelector("input").focus();
     }
     form.addEventListener("change", update);
     update();
